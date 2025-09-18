@@ -14,7 +14,66 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      journal_entries: {
+        Row: {
+          affirmation: string | null
+          created_at: string
+          date: string
+          gratitude: string | null
+          highlights: string | null
+          id: string
+          notes: string | null
+          priority_family: string | null
+          priority_selfcare: string | null
+          priority_work: string | null
+          rating_family: number | null
+          rating_selfcare: number | null
+          rating_work: number | null
+          reflection: string | null
+          thoughts: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          affirmation?: string | null
+          created_at?: string
+          date: string
+          gratitude?: string | null
+          highlights?: string | null
+          id?: string
+          notes?: string | null
+          priority_family?: string | null
+          priority_selfcare?: string | null
+          priority_work?: string | null
+          rating_family?: number | null
+          rating_selfcare?: number | null
+          rating_work?: number | null
+          reflection?: string | null
+          thoughts?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          affirmation?: string | null
+          created_at?: string
+          date?: string
+          gratitude?: string | null
+          highlights?: string | null
+          id?: string
+          notes?: string | null
+          priority_family?: string | null
+          priority_selfcare?: string | null
+          priority_work?: string | null
+          rating_family?: number | null
+          rating_selfcare?: number | null
+          rating_work?: number | null
+          reflection?: string | null
+          thoughts?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

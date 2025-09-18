@@ -1,11 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { JournalSection } from "./JournalSection";
 import { StarRating } from "./StarRating";
-import { Save, Calendar, RotateCcw } from "lucide-react";
+import { Save, Calendar, RotateCcw, ArrowLeft } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 interface JournalEntry {
   affirmation: string;
@@ -37,20 +39,118 @@ const initialEntry: JournalEntry = {
   reflection: "",
 };
 
-export function JournalForm() {
+interface JournalFormProps {
+  onBackToDashboard?: () => void;
+}
+
+export function JournalForm({ onBackToDashboard }: JournalFormProps) {
+  const { user } = useAuth();
   const [entry, setEntry] = useState<JournalEntry>(initialEntry);
   const [currentDate, setCurrentDate] = useState(new Date().toISOString().split('T')[0]);
+  const [loading, setLoading] = useState(false);
+  const [entryId, setEntryId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (user) {
+      loadTodayEntry();
+    }
+  }, [user, currentDate]);
+
+  const loadTodayEntry = async () => {
+    if (!user) return;
+    
+    const { data, error } = await supabase
+      .from('journal_entries')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('date', currentDate)
+      .single();
+
+    if (data) {
+      setEntry({
+        affirmation: data.affirmation || "",
+        priorityWork: data.priority_work || "",
+        priorityFamily: data.priority_family || "",
+        prioritySelfCare: data.priority_selfcare || "",
+        gratitude: data.gratitude || "",
+        highlights: data.highlights || "",
+        thoughts: data.thoughts || "",
+        notes: data.notes || "",
+        ratingWork: data.rating_work || 0,
+        ratingFamily: data.rating_family || 0,
+        ratingSelfCare: data.rating_selfcare || 0,
+        reflection: data.reflection || "",
+      });
+      setEntryId(data.id);
+    } else {
+      setEntry(initialEntry);
+      setEntryId(null);
+    }
+  };
 
   const updateEntry = (field: keyof JournalEntry, value: string | number) => {
     setEntry(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleSave = () => {
-    // This will be connected to Supabase later
-    toast({
-      title: "Entry Saved",
-      description: "Your journal entry has been saved successfully.",
-    });
+  const handleSave = async () => {
+    if (!user) return;
+    
+    setLoading(true);
+    
+    const entryData = {
+      user_id: user.id,
+      date: currentDate,
+      affirmation: entry.affirmation,
+      priority_work: entry.priorityWork,
+      priority_family: entry.priorityFamily,
+      priority_selfcare: entry.prioritySelfCare,
+      gratitude: entry.gratitude,
+      highlights: entry.highlights,
+      thoughts: entry.thoughts,
+      notes: entry.notes,
+      rating_work: entry.ratingWork || null,
+      rating_family: entry.ratingFamily || null,
+      rating_selfcare: entry.ratingSelfCare || null,
+      reflection: entry.reflection,
+    };
+
+    let error;
+    
+    if (entryId) {
+      // Update existing entry
+      const result = await supabase
+        .from('journal_entries')
+        .update(entryData)
+        .eq('id', entryId);
+      error = result.error;
+    } else {
+      // Create new entry
+      const result = await supabase
+        .from('journal_entries')
+        .insert([entryData])
+        .select()
+        .single();
+      
+      if (result.data) {
+        setEntryId(result.data.id);
+      }
+      error = result.error;
+    }
+    
+    setLoading(false);
+    
+    if (error) {
+      toast({
+        title: "Error Saving Entry",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Entry Saved",
+        description: "Your journal entry has been saved successfully.",
+      });
+    }
   };
 
   const handleClear = () => {
@@ -75,6 +175,18 @@ export function JournalForm() {
     <div className="max-w-4xl mx-auto p-6 space-y-6">
       {/* Header */}
       <div className="text-center space-y-4">
+        {onBackToDashboard && (
+          <div className="flex items-center justify-start mb-4">
+            <Button 
+              variant="ghost" 
+              onClick={onBackToDashboard}
+              className="flex items-center gap-2"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Back to Dashboard
+            </Button>
+          </div>
+        )}
         <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">
           Daily Guided Journal
         </h1>
@@ -247,10 +359,11 @@ export function JournalForm() {
       <div className="flex flex-col sm:flex-row gap-4 justify-center pt-6">
         <Button 
           onClick={handleSave}
+          disabled={loading}
           className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-3 text-lg"
         >
           <Save className="w-5 h-5" />
-          Save Entry
+          {loading ? "Saving..." : "Save Entry"}
         </Button>
         <Button 
           onClick={handleClear}
